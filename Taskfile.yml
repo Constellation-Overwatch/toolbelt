@@ -58,7 +58,7 @@ tasks:
       - cd {{.TERRAFORM_DIR}} && terraform output
       - echo ""
       - echo "🐳 Checking container status..."
-      - cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "docker ps --format 'table {{`{{.Names}}`}}\t{{`{{.Status}}`}}\t{{`{{.Ports}}`}}'"
+      - cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "docker ps"
       - echo ""
       - echo "🌐 Testing connectivity..."
       - cd {{.TERRAFORM_DIR}} && ping -c 2 $(terraform output -raw server_ip) || echo "❌ Ping failed"
@@ -79,7 +79,7 @@ tasks:
       - cd {{.TERRAFORM_DIR}} && echo "📍 Server IP:" $(terraform output -raw server_ip)
       - cd {{.TERRAFORM_DIR}} && echo "🌐 Domain:" $(terraform output -raw domain_name)
       - cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "systemctl is-active constellation-overwatch" -o || echo "❌ Service not running"
-      - cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "docker ps --filter name=constellation --format 'table {{`{{.Names}}`}}\t{{`{{.Status}}`}}'" -o
+      - cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "docker ps --filter name=constellation" -o
 
   logs:
     desc: "View application logs"

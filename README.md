@@ -122,18 +122,28 @@ Clone the repository and initialize the configuration:
 git clone https://github.com/Constellation-Overwatch/overwatch-iac-toolbelt.git
 cd overwatch-iac-toolbelt
 
-# Setup configuration
+# Setup configuration files
 task setup-config
 ```
 
-Edit the generated `config/terraform.tfvars` file with your credentials:
+Edit the generated `.env` file with your credentials:
 
-```hcl
-linode_token    = "your-linode-token"
-root_password   = "your-secure-password"
-ssh_public_key  = "ssh-ed25519 ..."
-github_username = "your-github-user"
-github_token    = "your-github-token"
+```bash
+# Linode Configuration
+TF_VAR_linode_token="your_linode_personal_access_token"
+TF_VAR_root_password="your_secure_root_password"
+
+# SSH Configuration
+TF_VAR_ssh_public_key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample your-email@example.com"
+TF_VAR_ssh_private_key_file="~/.ssh/id_ed25519"
+
+# GitHub Container Registry 
+TF_VAR_github_username="your_github_username"
+TF_VAR_github_token="ghp_your_github_personal_access_token"
+
+# Domain Configuration (optional - leave empty for IP-only access)
+TF_VAR_domain_name=""  # e.g., "constellation.example.com"
+TF_VAR_domain_email="" # e.g., "admin@example.com"
 ```
 
 Deploy the infrastructure:
@@ -141,6 +151,12 @@ Deploy the infrastructure:
 ```bash
 # Deploy everything
 task deploy
+
+# Check deployment status
+task status
+
+# Full health check
+task health
 ```
 
 </details>
@@ -152,14 +168,92 @@ task deploy
 The `Taskfile.yml` provides a set of convenient commands:
 
 ```bash
-task init       # Initialize Terraform and Ansible
-task validate   # Validate configurations
-task plan       # Preview infrastructure changes
-task deploy     # Deploy complete stack
-task update     # Update application only
-task logs       # View application logs
-task backup     # Create system backup
-task destroy    # Destroy all infrastructure
+# Setup and Configuration
+task setup-config  # Copy configuration files from examples
+task init          # Initialize Terraform and Ansible
+task validate      # Validate configurations
+
+# Deployment and Management  
+task plan          # Preview infrastructure changes
+task deploy        # Deploy complete stack
+task configure     # Run Ansible configuration only
+task update        # Update application only
+
+# Monitoring and Debugging
+task status        # Quick deployment status
+task health        # Comprehensive health check
+task logs          # View application logs
+
+# Maintenance
+task backup        # Create system backup
+task destroy       # Destroy all infrastructure
+```
+
+</details>
+
+<details>
+<summary>⚙️ Customization</summary>
+<br>
+
+### Deployment Modes
+
+**HTTP-Only Mode (Default)**
+```bash
+# Leave domain fields empty for IP-only access
+TF_VAR_domain_name=""
+TF_VAR_domain_email=""
+```
+- Access via server IP on port 80 (HTTP)
+- No SSL certificates required
+- Ideal for development and internal networks
+
+**HTTPS Mode with Domain**
+```bash
+# Configure domain for SSL certificates
+TF_VAR_domain_name="constellation.yourdomain.com"  
+TF_VAR_domain_email="admin@yourdomain.com"
+```
+- Automatic SSL certificates via Let's Encrypt
+- HTTP redirects to HTTPS
+- Production-ready configuration
+
+### Application Configuration
+
+The deployment automatically configures the Constellation Overwatch application with secure defaults:
+
+```yaml
+# API Security
+API_BEARER_TOKEN: "reindustrialize-dev-token"
+
+# Network Binding  
+HOST: "0.0.0.0"          # All interfaces
+PORT: "8080"             # Web UI and API port
+
+# NATS Messaging
+NATS_HOST: "0.0.0.0"     # All interfaces  
+NATS_PORT: "4222"        # NATS client port
+NATS_ENABLE_AUTH: "true" # Authentication enabled
+NATS_AUTH_TOKEN: "reindustrialize-america"
+
+# Web UI
+WEB_UI_PASSWORD: "reindustrialize"
+ALLOWED_ORIGINS: "*"     # CORS policy (development)
+```
+
+### Advanced Customization
+
+To modify application settings, edit the template files:
+
+- **Environment Variables**: `ansible/roles/constellation/templates/constellation.env.j2`
+- **Docker Configuration**: `ansible/roles/constellation/templates/docker-compose.yml.j2` 
+- **Nginx Proxy**: `ansible/roles/constellation/templates/nginx.conf.j2`
+- **Systemd Service**: `ansible/roles/constellation/templates/constellation-overwatch.service.j2`
+
+After modifications, redeploy with:
+```bash
+task configure  # Apply configuration changes only
+# or
+task deploy     # Full deployment
 ```
 
 </details>
@@ -168,19 +262,29 @@ task destroy    # Destroy all infrastructure
 
 ```
 overwatch-iac-toolbelt/
-├── ansible/            # Ansible playbooks and roles
-│   ├── inventories/    # Inventory files (auto-generated)
-│   ├── playbooks/      # Main deployment playbooks
-│   └── roles/          # Reusable roles (common, docker, security, etc.)
-├── config/             # Configuration files
-│   └── terraform.tfvars # User configuration (git-ignored)
-├── terraform/          # Terraform infrastructure definitions
-│   ├── main.tf         # Main resources
-│   ├── variables.tf    # Variable definitions
-│   └── outputs.tf      # Output definitions
-├── Taskfile.yml        # Task runner definitions
-├── prd.md              # Product Requirements Document
-└── README.md           # This file
+├── ansible/                    # Ansible playbooks and roles
+│   ├── inventories/           # Inventory files (auto-generated by Terraform)
+│   ├── playbooks/            # Main deployment playbooks
+│   │   ├── site.yml         # Complete system configuration
+│   │   └── deploy.yml       # Application updates only
+│   ├── roles/               # Reusable configuration roles
+│   │   ├── security/        # UFW firewall, Fail2Ban, SSH hardening
+│   │   ├── docker/          # Docker Engine installation
+│   │   └── constellation/   # Application deployment and configuration
+│   ├── requirements.yml     # External role dependencies
+│   └── ansible.cfg          # Ansible configuration
+├── config/                  # Configuration examples
+│   └── ansible.cfg.example  # Ansible configuration template
+├── terraform/               # Infrastructure as Code
+│   ├── main.tf             # Linode resources and local files
+│   ├── variables.tf        # Input variable definitions
+│   ├── outputs.tf          # Output definitions
+│   └── inventory.tpl       # Ansible inventory template
+├── keys/                    # SSH keys (git-ignored)
+├── .env.example            # Environment variables template
+├── Taskfile.yml            # Automation commands
+├── prd.md                  # Product Requirements Document
+└── README.md               # This documentation
 ```
 
 ## Contributing
