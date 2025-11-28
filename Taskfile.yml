@@ -1,0 +1,97 @@
+version: '3'
+
+vars:
+  CONFIG_DIR: config
+  TERRAFORM_DIR: terraform
+  ANSIBLE_DIR: ansible
+  
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmd: task --list
+
+  init:
+    desc: "Initialize Terraform and Ansible"
+    cmds:
+      - mkdir -p {{.CONFIG_DIR}} {{.TERRAFORM_DIR}} {{.ANSIBLE_DIR}}/inventories {{.ANSIBLE_DIR}}/playbooks {{.ANSIBLE_DIR}}/roles
+      - cd {{.TERRAFORM_DIR}} && terraform init
+      - ansible-galaxy install -r {{.ANSIBLE_DIR}}/requirements.yml
+    sources:
+      - "{{.TERRAFORM_DIR}}/*.tf"
+      - "{{.ANSIBLE_DIR}}/requirements.yml"
+
+  validate:
+    desc: "Validate Terraform and Ansible configurations"
+    deps: [init]
+    cmds:
+      - cd {{.TERRAFORM_DIR}} && terraform validate
+      - cd {{.ANSIBLE_DIR}} && ansible-playbook playbooks/site.yml --syntax-check
+
+  plan:
+    desc: "Preview infrastructure changes"
+    deps: [validate]
+    cmd: cd {{.TERRAFORM_DIR}} && set -a && source ../.env && set +a && terraform plan
+
+  deploy:
+    desc: "Deploy complete infrastructure and application"
+    deps: [plan]
+    cmds:
+      - cd {{.TERRAFORM_DIR}} && set -a && source ../.env && set +a && terraform apply -auto-approve
+      - task: configure
+
+  configure:
+    desc: "Run Ansible configuration"
+    cmd: cd {{.ANSIBLE_DIR}} && ansible-playbook -i inventories/production playbooks/site.yml
+
+  update:
+    desc: "Update application only (no infrastructure changes)"
+    cmd: cd {{.ANSIBLE_DIR}} && ansible-playbook -i inventories/production playbooks/deploy.yml
+
+  destroy:
+    desc: "Destroy all infrastructure"
+    cmd: cd {{.TERRAFORM_DIR}} && set -a && source ../.env && set +a && terraform destroy -auto-approve
+
+  health:
+    desc: "Check deployment health and status"
+    cmds:
+      - echo "🔍 Checking infrastructure status..."
+      - cd {{.TERRAFORM_DIR}} && terraform output
+      - echo ""
+      - echo "🐳 Checking container status..."
+      - cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "docker ps --format 'table {{`{{.Names}}`}}\t{{`{{.Status}}`}}\t{{`{{.Ports}}`}}'"
+      - echo ""
+      - echo "🌐 Testing connectivity..."
+      - cd {{.TERRAFORM_DIR}} && ping -c 2 $(terraform output -raw server_ip) || echo "❌ Ping failed"
+      - echo ""
+      - echo "🔌 Checking open ports..."
+      - cd {{.TERRAFORM_DIR}} && nmap -p 22,80,443,4222,8080,8222 $(terraform output -raw server_ip) 2>/dev/null || echo "❌ nmap not available"
+      - echo ""
+      - echo "🏥 Application health check..."
+      - cd {{.TERRAFORM_DIR}} && curl -sf http://$(terraform output -raw server_ip):8080/health || echo "❌ Health endpoint not accessible (may be behind nginx)"
+      - echo ""
+      - echo "📊 Service status..."
+      - cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "systemctl is-active constellation-overwatch" || echo "❌ Service check failed"
+
+  status:
+    desc: "Quick status check"
+    cmds:
+      - echo "🚀 Constellation Overwatch Status"
+      - cd {{.TERRAFORM_DIR}} && echo "📍 Server IP:" $(terraform output -raw server_ip)
+      - cd {{.TERRAFORM_DIR}} && echo "🌐 Domain:" $(terraform output -raw domain_name)
+      - cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "systemctl is-active constellation-overwatch" -o || echo "❌ Service not running"
+      - cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "docker ps --filter name=constellation --format 'table {{`{{.Names}}`}}\t{{`{{.Status}}`}}'" -o
+
+  logs:
+    desc: "View application logs"
+    cmd: cd {{.ANSIBLE_DIR}} && ansible -i inventories/production all -m shell -a "docker logs constellation-overwatch --tail 50"
+
+  backup:
+    desc: "Create system backup"
+    cmd: cd {{.ANSIBLE_DIR}} && ansible-playbook -i inventories/production playbooks/backup.yml
+
+  setup-config:
+    desc: "Setup configuration files from examples"
+    cmds:
+      - cp {{.CONFIG_DIR}}/ansible.cfg.example {{.ANSIBLE_DIR}}/ansible.cfg
+      - cp .env.example .env
+      - echo "Configuration files created - edit .env with your values"

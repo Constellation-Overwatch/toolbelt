@@ -1,0 +1,71 @@
+---
+- name: Create constellation user
+  user:
+    name: constellation
+    system: yes
+    shell: /bin/false
+    home: /opt/constellation
+    create_home: yes
+
+- name: Create constellation directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: constellation
+    group: constellation
+    mode: '0755'
+  with_items:
+    - /opt/constellation
+    - /opt/constellation/data
+    - /opt/constellation/logs
+    - /opt/constellation/config
+    - /opt/constellation/certs
+
+- name: Create docker-compose configuration
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/constellation/docker-compose.yml
+    owner: constellation
+    group: constellation
+    mode: '0644'
+  notify: restart constellation
+
+- name: Create constellation environment file
+  template:
+    src: constellation.env.j2
+    dest: /opt/constellation/.env
+    owner: constellation
+    group: constellation
+    mode: '0600'
+  notify: restart constellation
+
+- name: Create nginx configuration
+  template:
+    src: nginx.conf.j2
+    dest: /opt/constellation/config/nginx.conf
+    owner: constellation
+    group: constellation
+    mode: '0644'
+  notify: restart constellation
+
+- name: Create systemd service for constellation
+  template:
+    src: constellation-overwatch.service.j2
+    dest: /etc/systemd/system/constellation-overwatch.service
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart constellation
+
+- name: Pull constellation-overwatch image
+  docker_image:
+    name: ghcr.io/constellation-overwatch/constellation-overwatch
+    tag: latest
+    source: pull
+
+- name: Start and enable constellation service
+  systemd:
+    name: constellation-overwatch
+    state: started
+    enabled: yes
+    daemon_reload: yes

@@ -1,0 +1,26 @@
+---
+- name: Deploy Constellation Overwatch
+  hosts: constellation_servers
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    constellation_domain: "{{ domain_name | default('') }}"
+    
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  roles:
+    - security
+    - docker
+    - constellation
+
+  post_tasks:
+    - name: Ensure constellation service is running
+      systemd:
+        name: constellation-overwatch
+        state: started
+        enabled: yes

@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  constellation-overwatch:
+    image: ghcr.io/constellation-overwatch/constellation-overwatch:latest
+    container_name: constellation-overwatch
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+      - ./logs:/app/logs
+      - ./certs:/app/certs
+    environment:
+      # API Configuration
+      - API_BEARER_TOKEN=reindustrialize-dev-token
+      
+      # Network Configuration
+      - HOST=0.0.0.0
+      - PORT=8080
+      
+      # Database Configuration
+      - DB_PATH=./data/constellation.db
+      
+      # NATS Configuration
+      - NATS_HOST=0.0.0.0
+      - NATS_PORT=4222
+      - NATS_DATA_DIR=./data/overwatch
+      - NATS_JETSTREAM=true
+      - NATS_TLS_DISABLED=true
+      
+      # NATS Security
+      - NATS_ENABLE_AUTH=true
+      - NATS_AUTH_TOKEN=reindustrialize-america
+      - NATS_AUTH_REQUIRED=true
+      - NATS_AUTH_USER=constellation
+      - NATS_AUTH_PASS=${NATS_PASSWORD}
+      
+      # WebSocket/CORS Configuration
+      - ALLOWED_ORIGINS=*
+      
+      # Web UI Security
+      - WEB_UI_PASSWORD=reindustrialize
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - constellation
+
+  nginx:
+    image: nginx:alpine
+    container_name: constellation-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - constellation-overwatch
+    networks:
+      - constellation
+
+{% if constellation_domain and constellation_domain != "" %}
+  certbot:
+    image: certbot/certbot
+    container_name: constellation-certbot
+    volumes:
+      - ./certs:/etc/letsencrypt
+      - ./certbot-webroot:/var/www/certbot
+    command: >
+      certonly --webroot --webroot-path=/var/www/certbot
+      --email {{ domain_email | default('admin@' + constellation_domain) }}
+      --agree-tos --no-eff-email
+      -d {{ constellation_domain }}
+    depends_on:
+      - nginx
+    networks:
+      - constellation
+{% endif %}
+
+networks:
+  constellation:
+    driver: bridge

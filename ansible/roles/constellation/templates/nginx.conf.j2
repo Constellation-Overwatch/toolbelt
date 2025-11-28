@@ -1,0 +1,123 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream constellation_backend {
+        server constellation-overwatch:8080;
+    }
+
+    upstream nats_monitoring {
+        server constellation-overwatch:8222;
+    }
+
+    # Rate limiting
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=general:10m rate=20r/s;
+
+    # Security headers
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+{% if constellation_domain and constellation_domain != "" %}
+    # Redirect HTTP to HTTPS
+    server {
+        listen 80;
+        server_name {{ constellation_domain }};
+        
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+        
+        location / {
+            return 301 https://$server_name$request_uri;
+        }
+    }
+
+    # HTTPS server
+    server {
+        listen 443 ssl http2;
+        server_name {{ constellation_domain }};
+
+        ssl_certificate /etc/nginx/certs/live/{{ constellation_domain }}/fullchain.pem;
+        ssl_certificate_key /etc/nginx/certs/live/{{ constellation_domain }}/privkey.pem;
+        
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+        
+        # HSTS
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+        
+        # Main application
+        location / {
+            limit_req zone=general burst=20 nodelay;
+            proxy_pass http://constellation_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # WebSocket support
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+        
+        # NATS monitoring
+        location /nats/ {
+            proxy_pass http://nats_monitoring/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+        
+        # API endpoints with rate limiting
+        location /api/ {
+            limit_req zone=api burst=10 nodelay;
+            proxy_pass http://constellation_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+{% else %}
+    # HTTP only server (no domain)
+    server {
+        listen 80;
+        server_name _;
+
+        # Main application
+        location / {
+            limit_req zone=general burst=20 nodelay;
+            proxy_pass http://constellation_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            
+            # WebSocket support
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+        
+        # NATS monitoring
+        location /nats/ {
+            proxy_pass http://nats_monitoring/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+        
+        # API endpoints with rate limiting
+        location /api/ {
+            limit_req zone=api burst=10 nodelay;
+            proxy_pass http://constellation_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+    }
+{% endif %}
+}
