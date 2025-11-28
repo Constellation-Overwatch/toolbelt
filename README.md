@@ -8,12 +8,12 @@
 </p>
 
 <p align="center">
-  <a title="Build Status" target="_blank" href="https://github.com/Constellation-Overwatch/toolbelt/actions"><img src="https://img.shields.io/github/actions/workflow/status/Constellation-Overwatch/overwatch-iac-toolbelt/ci.yml?style=flat-square"></a>
+  <a title="Build Status" target="_blank" href="https://github.com/Constellation-Overwatch/toolbelt/actions"><img src="https://img.shields.io/github/actions/workflow/status/Constellation-Overwatch/toolbelt/ci.yml?style=flat-square"></a>
   <a title="License" target="_blank" href="https://github.com/Constellation-Overwatch/toolbelt/blob/main/LICENSE"><img src="http://img.shields.io/badge/license-MIT-orange.svg?style=flat-square"></a>
   <br>
-  <a title="GitHub Pull Requests" target="_blank" href="https://github.com/Constellation-Overwatch/toolbelt/pulls"><img src="https://img.shields.io/github/issues-pr-closed/Constellation-Overwatch/overwatch-iac-toolbelt.svg?style=flat-square&color=FF9966"></a>
-  <a title="GitHub Commits" target="_blank" href="https://github.com/Constellation-Overwatch/toolbelt/commits/main"><img src="https://img.shields.io/github/commit-activity/m/Constellation-Overwatch/overwatch-iac-toolbelt.svg?style=flat-square"></a>
-  <a title="Last Commit" target="_blank" href="https://github.com/Constellation-Overwatch/toolbelt/commits/main"><img src="https://img.shields.io/github/last-commit/Constellation-Overwatch/overwatch-iac-toolbelt.svg?style=flat-square&color=FF9900"></a>
+  <a title="GitHub Pull Requests" target="_blank" href="https://github.com/Constellation-Overwatch/toolbelt/pulls"><img src="https://img.shields.io/github/issues-pr-closed/Constellation-Overwatch/toolbelt.svg?style=flat-square&color=FF9966"></a>
+  <a title="GitHub Commits" target="_blank" href="https://github.com/Constellation-Overwatch/toolbelt/commits/main"><img src="https://img.shields.io/github/commit-activity/m/Constellation-Overwatch/toolbelt.svg?style=flat-square"></a>
+  <a title="Last Commit" target="_blank" href="https://github.com/Constellation-Overwatch/toolbelt/commits/main"><img src="https://img.shields.io/github/last-commit/Constellation-Overwatch/toolbelt.svg?style=flat-square&color=FF9900"></a>
 </p>
 
 ---
