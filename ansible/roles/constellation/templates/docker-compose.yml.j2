@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   constellation-overwatch:
     image: ghcr.io/constellation-overwatch/constellation-overwatch:latest
@@ -34,9 +32,6 @@ services:
       # NATS Security
       - NATS_ENABLE_AUTH=true
       - NATS_AUTH_TOKEN=reindustrialize-america
-      - NATS_AUTH_REQUIRED=true
-      - NATS_AUTH_USER=constellation
-      - NATS_AUTH_PASS=${NATS_PASSWORD}
       
       # WebSocket/CORS Configuration
       - ALLOWED_ORIGINS=*
@@ -62,6 +57,7 @@ services:
     volumes:
       - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
+      - ./certbot-webroot:/var/www/certbot:ro
     depends_on:
       - constellation-overwatch
     networks:
@@ -78,6 +74,7 @@ services:
       certonly --webroot --webroot-path=/var/www/certbot
       --email {{ domain_email | default('admin@' + constellation_domain) }}
       --agree-tos --no-eff-email
+      --staging
       -d {{ constellation_domain }}
     depends_on:
       - nginx

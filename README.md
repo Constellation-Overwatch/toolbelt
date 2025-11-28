@@ -157,6 +157,47 @@ task status
 
 # Full health check
 task health
+
+# View application logs
+task logs
+```
+
+### 🌐 Access Your Deployment
+
+After successful deployment, access your Constellation Overwatch instance:
+
+**IP-Only Access (no domain configured):**
+```bash
+# Get your server IP
+task status
+
+# Access via browser
+http://YOUR_SERVER_IP
+```
+
+**Domain Access (if configured):**
+```bash
+http://your-domain.com    # HTTP access
+https://your-domain.com   # HTTPS (after SSL certificates)
+```
+
+**Direct Port Access:**
+- **Web UI**: `http://YOUR_SERVER_IP:8080`
+- **NATS Client**: `nats://YOUR_SERVER_IP:4222`
+- **NATS Monitoring**: `http://YOUR_SERVER_IP:8222`
+
+### 🔒 SSL Certificate Setup (Optional)
+
+If you configured a domain name, SSL certificates will be automatically requested:
+
+```bash
+# Check certificate status
+task logs | grep certbot
+
+# For production certificates (remove staging):
+# Edit ansible/roles/constellation/templates/docker-compose.yml.j2
+# Remove the '--staging' flag from certbot command
+# Then run: task configure
 ```
 
 </details>
@@ -226,18 +267,24 @@ The deployment automatically configures the Constellation Overwatch application 
 API_BEARER_TOKEN: "reindustrialize-dev-token"
 
 # Network Binding  
-HOST: "0.0.0.0"          # All interfaces
+HOST: "0.0.0.0"          # All interfaces (accessible externally)
 PORT: "8080"             # Web UI and API port
 
+# Database
+DB_PATH: "./data/constellation.db"  # SQLite database location
+
 # NATS Messaging
-NATS_HOST: "0.0.0.0"     # All interfaces  
+NATS_HOST: "0.0.0.0"     # All interfaces (accessible externally)
 NATS_PORT: "4222"        # NATS client port
+NATS_DATA_DIR: "./data/overwatch"  # NATS data storage
 NATS_ENABLE_AUTH: "true" # Authentication enabled
 NATS_AUTH_TOKEN: "reindustrialize-america"
+NATS_JETSTREAM: "true"   # Enable JetStream
+NATS_TLS_DISABLED: "true" # Disable TLS for simplicity
 
-# Web UI
+# Web UI & CORS
 WEB_UI_PASSWORD: "reindustrialize"
-ALLOWED_ORIGINS: "*"     # CORS policy (development)
+ALLOWED_ORIGINS: "*"     # CORS policy (allows all origins)
 ```
 
 ### Advanced Customization
@@ -286,6 +333,39 @@ overwatch-iac-toolbelt/
 ├── prd.md                  # Product Requirements Document
 └── README.md               # This documentation
 ```
+
+## 🔧 Troubleshooting
+
+<details>
+<summary>Common Issues and Solutions</summary>
+<br>
+
+### nginx Container Restarting
+- **Cause**: SSL certificates missing but domain configured
+- **Solution**: Wait for certbot to complete, or temporarily disable domain
+- **Check**: `task logs | grep nginx`
+
+### SSL Certificate Failures
+- **Rate Limits**: Let's Encrypt limits 5 failures per hour per domain
+- **Solution**: Wait for rate limit reset or use `--staging` flag for testing
+- **Check**: `task logs | grep certbot`
+
+### Application Not Accessible
+- **Ports**: Ensure ports 80, 443, 4222, 8080, 8222 are open
+- **Health Check**: Run `task health` to verify all services
+- **Firewall**: Check UFW status with `ufw status`
+
+### WebSocket Connection Issues
+- **nginx**: Verify WebSocket headers in nginx configuration
+- **CORS**: Check `ALLOWED_ORIGINS` environment variable
+- **Ports**: Ensure application binds to `0.0.0.0:8080` not `127.0.0.1:8080`
+
+### Container Health Checks Failing
+- **App Startup**: Check `task logs` for application startup errors
+- **Database**: Verify SQLite database file permissions
+- **NATS**: Ensure NATS authentication tokens match
+
+</details>
 
 ## Contributing
 
