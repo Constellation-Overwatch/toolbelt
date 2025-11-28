@@ -1,10 +1,10 @@
-version: '3'
+version: "3"
 
 vars:
   CONFIG_DIR: config
   TERRAFORM_DIR: terraform
   ANSIBLE_DIR: ansible
-  
+
 tasks:
   default:
     desc: "Show available tasks"
@@ -37,6 +37,8 @@ tasks:
     deps: [plan]
     cmds:
       - cd {{.TERRAFORM_DIR}} && set -a && source ../.env && set +a && terraform apply -auto-approve
+      - echo "Waiting for infrastructure OS to stabilize..."
+      - sleep 5
       - task: configure
 
   configure:
