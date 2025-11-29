@@ -10,41 +10,38 @@ services:
       - "8080"
     volumes:
       - ./data:/data
-      - ./logs:/app/logs
-      - ./certs:/app/certs
+      - ./certs:/app/certs:ro
     environment:
       # API Configuration
       - API_BEARER_TOKEN=reindustrialize-dev-token
-      
+
       # Network Configuration
       - HOST=0.0.0.0
       - PORT=8080
-      
-      # Database Configuration
-      - DB_PATH=./data/constellation.db
-      
-      # NATS Configuration
+
+      # Database Configuration (absolute path in container)
+      - DB_PATH=/data/constellation.db
+
+      # NATS Configuration (absolute path in container)
       - NATS_HOST=0.0.0.0
       - NATS_PORT=4222
-      - NATS_DATA_DIR=./data/overwatch
-      - NATS_JETSTREAM=true
-      - NATS_TLS_DISABLED=true
-      
+      - NATS_DATA_DIR=/data/nats
+
       # NATS Security
       - NATS_ENABLE_AUTH=true
       - NATS_AUTH_TOKEN=reindustrialize-america
-      
+
       # WebSocket/CORS Configuration
       - ALLOWED_ORIGINS=*
-      
+
       # Web UI Security
       - WEB_UI_PASSWORD=reindustrialize
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
     networks:
       - constellation
 
