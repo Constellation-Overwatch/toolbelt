@@ -2,9 +2,27 @@ events {
     worker_connections 1024;
 }
 
+# TCP proxy for NATS
+stream {
+    upstream nats_backend {
+        server constellation-overwatch:4222;
+    }
+
+    server {
+        listen 4222;
+        proxy_pass nats_backend;
+        proxy_connect_timeout 10s;
+        proxy_timeout 300s;
+    }
+}
+
 http {
     upstream constellation_backend {
         server constellation-overwatch:8080;
+    }
+
+    upstream nats_monitoring {
+        server constellation-overwatch:8222;
     }
 
     # Rate limiting
@@ -88,7 +106,7 @@ http {
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            
+
             # WebSocket support for all routes
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
@@ -96,4 +114,22 @@ http {
         }
     }
 {% endif %}
+
+    # NATS Monitoring HTTP server (port 8222)
+    server {
+        listen 8222;
+        server_name _;
+
+        location / {
+            proxy_pass http://nats_monitoring;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            # WebSocket support
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
 }
